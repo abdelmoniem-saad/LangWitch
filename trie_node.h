@@ -7,15 +7,17 @@ const int CHAR_SIZE = 128;
 struct TrieNode {
     char value;
     bool isEndOfWord;
+    bool isNormalizedWord;
+
     TrieNode* children[CHAR_SIZE];  // children nodes
 
     // Constructor
-    TrieNode(char val='\0') {
+    TrieNode(char val = '\0') {
         isEndOfWord = false;
-        for (int i = 0; i < CHAR_SIZE; i++) {
-            children[i] = NULL;
-        }
+        isNormalizedWord = false;
+        for (int i = 0; i < CHAR_SIZE; i++) children[i] = nullptr;
     }
+
 
     // Destructor
     ~TrieNode() {

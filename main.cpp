@@ -19,9 +19,9 @@ void tokenizeAndDetect(
     int enCount = 0, frCount = 0, deCount = 0;
 
     while (stream >> word) {
-        if (english->search(word)) enCount++;
-        if (french->search(word)) frCount++;
-        if (german->search(word)) deCount++;
+        enCount += english->getMatchScore(word);
+        frCount += french->getMatchScore(word);
+        deCount += german->getMatchScore(word);
     }
 
     std::cout << "\n--- Language Match Counts ---\n";
@@ -64,19 +64,25 @@ int main() {
     english->insert("computer");
     english->insert("language");
     english->insert("dejavu");
+    english->insert("content");
 
     french->insert("bonjour");
     french->insert("monde");
     french->insert("ordinateur");
     french->insert("langue");
     french->insert("complément");
-    french->insert("déjavu");
+    french->insert("déjàvu");
+    french->insert("content");
+    french->insert("je");
+    french->insert("suis");
+    french->insert("trés");
 
     german->insert("hallo");
     german->insert("welt");
     german->insert("sprache");
     german->insert("computer");
     german->insert("straße");
+    german->insert("hallo");
 
     std::string input;
     std::cout << "Enter a sentence to detect its language:\n> ";
@@ -89,5 +95,7 @@ int main() {
     delete french;
     delete german;
 
+
+    return 0;
     return 0;
 }

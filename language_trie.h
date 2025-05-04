@@ -14,7 +14,7 @@ private:
 
 public:
     // Constructor
-    LanguageTrie(const string& languageName) {
+    LanguageTrie(const string& languageName) : languageName(languageName) {
         root = new TrieNode();
     }
 
@@ -23,47 +23,66 @@ public:
         delete root;
     }
 
-    // Insert a new word // file with path
-    void insert(const string& word) {
+    // Insert normalized version of word
+    void insert(const std::string& word) {
+        // Insert exact form
         TrieNode* current = root;
         for (char ch : word) {
             unsigned char index = static_cast<unsigned char>(ch);
             if (index >= CHAR_SIZE) continue;
-            if (current->children[index] == nullptr) {
+            if (!current->children[index])
                 current->children[index] = new TrieNode(ch);
-            }
             current = current->children[index];
         }
         current->isEndOfWord = true;
+
+        // Insert normalized only if different
+        std::string normalized = normalizeWord(word);
+        if (normalized != word) {
+            current = root;
+            for (char ch : normalized) {
+                unsigned char index = static_cast<unsigned char>(ch);
+                if (index >= CHAR_SIZE) continue;
+                if (!current->children[index])
+                    current->children[index] = new TrieNode(ch);
+                current = current->children[index];
+            }
+            current->isNormalizedWord = true;  // ✅ Correct flag
+        }
     }
 
-    // Search for a matching word
-    bool search(const string& word) const {
-      // Try accented first
+
+    int getMatchScore(const std::string& word) const {
+        // Try exact match
         TrieNode* current = root;
         for (char ch : word) {
             unsigned char index = static_cast<unsigned char>(ch);
-            if (current->children[index] == nullptr || index >= CHAR_SIZE){
-              current == nullptr;
-              break;
+            if (index >= CHAR_SIZE || !current->children[index]) {
+                current = nullptr;
+                break;
             }
             current = current->children[index];
         }
-        if (current && current->isEndOfWord) return true;
+        if (current && current->isEndOfWord)
+            return 2;
 
-       	// Try normalized
-        string normalized = normalizeWord(word);
-        current = root;
+        // Try normalized match
+        std::string normalized = normalizeWord(word);
+
+        // Do NOT skip if normalized == word (important!)
+        TrieNode* normNode = root;
         for (char ch : normalized) {
             unsigned char index = static_cast<unsigned char>(ch);
-            if (index >= CHAR_SIZE || current->children[index] == nullptr)
-                return false;
-            current = current->children[index];
+            if (index >= CHAR_SIZE || !normNode->children[index]) {
+                normNode = nullptr;
+                break;
+            }
+            normNode = normNode->children[index];
         }
-        return current && current->isEndOfWord;
+        return (normNode && normNode->isNormalizedWord) ? 1 : 0;
     }
 
-    // Get the language
+
     string getLanguageName() const {
         return languageName;
     }
