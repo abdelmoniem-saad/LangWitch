@@ -11,41 +11,40 @@
 #include "language_trie.h"
 #include "normalize.h"
 #include <fstream>
-
+using namespace std;
 // Function to load words from a file into a LanguageTrie
-void loadWordsFromFile(const std::string& filename, LanguageTrie* trie) {
-    std::ifstream file(filename);
+void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
+    ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file " << filename << "\n";
+        cerr << "Error: Could not open file " << filename << "\n";
         return;
     }
 
-    std::string word;
-    while (std::getline(file, word)) {
+    string word;
+    while (getline(file, word)) {
         trie->insert(word);
     }
 
     file.close();
 }
 
-std::pair<std::string, double> detectLanguage(
-    const std::string& input,
+    pair<string, double> detectLanguage(
+    const string& input,
     LanguageTrie* english,
     LanguageTrie* french,
     LanguageTrie* german,
     LanguageTrie* spanish,
     LanguageTrie* italian
     ) {
-    std::istringstream stream(input);
-    std::string word;
+    istringstream stream(input);
+    string word;
 
-    map<string, map<string, int>> matrix;
+    map<string, map<string, double>> matrix;
     map<string, map<string, set<string>>> contributors;
     vector<string> langs = {"English", "French", "German", "Spanish", "Italian"};
 
     while (stream >> word) {
-
-        set<std::string> detected;
+        set<string> detected;
         string normalized = normalizeWord(word);
 
         int en = english->getMatchScore(normalized);
@@ -59,15 +58,15 @@ std::pair<std::string, double> detectLanguage(
         if (sp) detected.insert("Spanish");
         if (it) detected.insert("Italian");
 
-        if (detected.size() == 1) {
-            std::string lang = *detected.begin();
-            matrix[lang][lang] += 2;
-            contributors[lang][lang].insert(word);
-        } else if (detected.size() > 1) {
+        if (!detected.empty()) {
+            for (const auto& lang : detected) {
+                matrix[lang][lang] += 1;
+                contributors[lang][lang].insert(word);
+            }
             for (const auto& l1 : detected) {
                 for (const auto& l2 : detected) {
                     if (l1 != l2) {
-                        matrix[l1][l2] += 1;
+                        matrix[l1][l2] += 0.5;
                         contributors[l1][l2].insert(word);
                     }
                 }
@@ -75,48 +74,48 @@ std::pair<std::string, double> detectLanguage(
         }
     }
 
-    std::string bestLang;
+    string bestLang;
     int maxDiagonal = -1;
-    for (const std::string& lang : langs) {
+    for (const string& lang : langs) {
         if (matrix[lang][lang] > maxDiagonal) {
             maxDiagonal = matrix[lang][lang];
             bestLang = lang;
         }
     }
     int total = 0;
-    for (const std::string& row : langs) {
-        for (const std::string& col : langs) {
+    for (const string& row : langs) {
+        for (const string& col : langs) {
             if (row == col || row < col) total += matrix[row][col];
         }
     }
     double confidence = (total > 0) ? static_cast<double>(matrix[bestLang][bestLang]) / total : 0.0;
-    std::cout << "\n--- Language Word Match Square Matrix ---\n";
-    std::cout << std::setw(10) << "";
+    cout << "\n--- Language Word Match Square Matrix ---\n";
+    cout << setw(10) << "";
     for (const auto& col : langs) {
-        std::cout << std::setw(10) << col;
+        cout << setw(10) << col;
     }
-    std::cout << "\n";
+    cout << "\n";
     for (const auto& row : langs) {
-        std::cout << std::setw(10) << row;
+        cout << setw(10) << row;
         for (const auto& col : langs) {
-            std::cout << std::setw(10) << matrix[row][col];
+            cout << setw(10) << matrix[row][col];
         }
-        std::cout << "\n";
+        cout << "\n";
     }
-    std::cout << "\n--- Word Contributors per Matrix Cell ---\n";
+    cout << "\n--- Word Contributors per Matrix Cell ---\n";
     for (const auto& row : langs) {
         for (const auto& col : langs) {
             if (!contributors[row][col].empty()) {
                 std::cout << row << " " << col << " : ";
                 for (const auto& w : contributors[row][col]) {
-                    std::cout << w << " ";
+                    cout << w << " ";
                 }
-                std::cout << "\n";
+                cout << "\n";
             }
         }
     }
-    std::cout << std::fixed << std::setprecision(2);
-    std::cout << "\nPredicted Language: " << bestLang << " | Confidence: " << (confidence * 100.0) << "%\n";
+    cout << fixed << setprecision(2);
+    cout << "\nPredicted Language: " << bestLang << " | Confidence: " << (confidence * 100.0) << "%\n";
     return {bestLang, confidence};
 }
 
@@ -137,9 +136,9 @@ int main() {
     loadWordsFromFile("spanish.txt", spanish);
     loadWordsFromFile("italian.txt", italian);
 
-    std::string input;
-    std::cout << "Enter a sentence to detect its language:\n> ";
-    std::getline(std::cin, input);
+    string input;
+    cout << "Enter a sentence to detect its language:\n> ";
+    getline(cin, input);
 
     detectLanguage(input, english, french, german, spanish, italian);
     // Clean up

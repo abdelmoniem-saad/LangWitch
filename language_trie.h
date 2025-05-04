@@ -24,7 +24,7 @@ public:
     }
 
     // Insert normalized version of word
-    void insert(const std::string& word) {
+    void insert(const string& word) {
         // Insert exact form
         TrieNode* current = root;
         for (char ch : word) {
@@ -47,7 +47,7 @@ public:
                     current->children[index] = new TrieNode(ch);
                 current = current->children[index];
             }
-            current->isNormalizedWord = true;  // ✅ Correct flag
+            current->isNormalizedWord = true;
         }
     }
 
