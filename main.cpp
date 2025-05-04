@@ -5,7 +5,11 @@
 #include <iostream>
 #include <sstream>
 #include <map>
+#include <vector>
+#include <set>
+#include <iomanip>
 #include "language_trie.h"
+#include "normalize.h"
 #include <fstream>
 
 // Function to load words from a file into a LanguageTrie
@@ -24,58 +28,98 @@ void loadWordsFromFile(const std::string& filename, LanguageTrie* trie) {
     file.close();
 }
 
-void tokenizeAndDetect(
+std::pair<std::string, double> detectLanguage(
     const std::string& input,
     LanguageTrie* english,
     LanguageTrie* french,
     LanguageTrie* german,
     LanguageTrie* spanish,
     LanguageTrie* italian
-) {
+    ) {
     std::istringstream stream(input);
     std::string word;
 
-    int enCount = 0, frCount = 0, deCount = 0, spCount = 0, itCount = 0;
+    map<string, map<string, int>> matrix;
+    map<string, map<string, set<string>>> contributors;
+    vector<string> langs = {"English", "French", "German", "Spanish", "Italian"};
 
     while (stream >> word) {
-        enCount += english->getMatchScore(word);
-        frCount += french->getMatchScore(word);
-        deCount += german->getMatchScore(word);
-        spCount += spanish->getMatchScore(word);
-        itCount += italian->getMatchScore(word);
-    }
 
-    std::cout << "\n--- Language Match Counts ---\n";
-    std::cout << "English: " << enCount << "\n";
-    std::cout << "French : " << frCount << "\n";
-    std::cout << "German : " << deCount << "\n";
-    std::cout << "Spanish : " << spCount << "\n";
-    std::cout << "Italian : " << itCount << "\n";
+        set<std::string> detected;
+        string normalized = normalizeWord(word);
 
-    if (enCount == 0 && frCount == 0 && deCount == 0 && spCount == 0 && itCount == 0) {
-        std::cout << "No match found. Unable to detect language.\n";
-        return;
-    }
+        int en = english->getMatchScore(normalized);
+        int fr = french->getMatchScore(normalized);
+        int de = german->getMatchScore(normalized);
+        int sp = spanish->getMatchScore(normalized);
+        int it = italian->getMatchScore(normalized);
+        if (en) detected.insert("English");
+        if (fr) detected.insert("French");
+        if (de) detected.insert("German");
+        if (sp) detected.insert("Spanish");
+        if (it) detected.insert("Italian");
 
-    std::map<std::string, int> scores = {
-        {"English", enCount},
-        {"French", frCount},
-        {"German", deCount},
-        {"Spanish", spCount},
-        {"Italian", itCount}
-    };
-
-    std::string bestLang;
-    int maxScore = -1;
-    for (auto& [lang, count] : scores) {
-        if (count > maxScore) {
-            bestLang = lang;
-            maxScore = count;
+        if (detected.size() == 1) {
+            std::string lang = *detected.begin();
+            matrix[lang][lang] += 2;
+            contributors[lang][lang].insert(word);
+        } else if (detected.size() > 1) {
+            for (const auto& l1 : detected) {
+                for (const auto& l2 : detected) {
+                    if (l1 != l2) {
+                        matrix[l1][l2] += 1;
+                        contributors[l1][l2].insert(word);
+                    }
+                }
+            }
         }
     }
 
-    std::cout << "\n Detected Language: " << bestLang << "\n";
+    std::string bestLang;
+    int maxDiagonal = -1;
+    for (const std::string& lang : langs) {
+        if (matrix[lang][lang] > maxDiagonal) {
+            maxDiagonal = matrix[lang][lang];
+            bestLang = lang;
+        }
+    }
+    int total = 0;
+    for (const std::string& row : langs) {
+        for (const std::string& col : langs) {
+            if (row == col || row < col) total += matrix[row][col];
+        }
+    }
+    double confidence = (total > 0) ? static_cast<double>(matrix[bestLang][bestLang]) / total : 0.0;
+    std::cout << "\n--- Language Word Match Square Matrix ---\n";
+    std::cout << std::setw(10) << "";
+    for (const auto& col : langs) {
+        std::cout << std::setw(10) << col;
+    }
+    std::cout << "\n";
+    for (const auto& row : langs) {
+        std::cout << std::setw(10) << row;
+        for (const auto& col : langs) {
+            std::cout << std::setw(10) << matrix[row][col];
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n--- Word Contributors per Matrix Cell ---\n";
+    for (const auto& row : langs) {
+        for (const auto& col : langs) {
+            if (!contributors[row][col].empty()) {
+                std::cout << row << " " << col << " : ";
+                for (const auto& w : contributors[row][col]) {
+                    std::cout << w << " ";
+                }
+                std::cout << "\n";
+            }
+        }
+    }
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "\nPredicted Language: " << bestLang << " | Confidence: " << (confidence * 100.0) << "%\n";
+    return {bestLang, confidence};
 }
+
 
 int main() {
     // Create tries
@@ -97,8 +141,7 @@ int main() {
     std::cout << "Enter a sentence to detect its language:\n> ";
     std::getline(std::cin, input);
 
-    tokenizeAndDetect(input, english, french, german, spanish, italian);
-
+    detectLanguage(input, english, french, german, spanish, italian);
     // Clean up
     delete english;
     delete french;
