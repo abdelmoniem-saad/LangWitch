@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "name": "Build & Run All",
+            "type": "command",
+            "program": "bash",
+            "args": [
+                "-c",
+                "g++ *.cpp -std=c++17 -Wall -o app && ./app"
+            ],
+            "workingDir": "$PROJECT_DIR$"
+        }
+    ]
+}
