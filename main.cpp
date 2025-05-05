@@ -154,8 +154,7 @@ void runTests(LanguageTrie* english, LanguageTrie* french, LanguageTrie* german,
 
         auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
         cout << "Input: \"" << input << "\" | Expected: " << expected
-                  << " | Detected: " << detectedLang
-                  << " | Confidence: " << (confidence * 100.0) << "%\n";
+                  << " | Detected: " << detectedLang;
     }
 }
 
