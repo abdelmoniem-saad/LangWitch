@@ -1,0 +1,3 @@
+C:/Users/Basmala Kamal/CLionProjects/LangWitch/cmake-build-debug/CMakeFiles/LangWitch.dir
+C:/Users/Basmala Kamal/CLionProjects/LangWitch/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Basmala Kamal/CLionProjects/LangWitch/cmake-build-debug/CMakeFiles/rebuild_cache.dir
