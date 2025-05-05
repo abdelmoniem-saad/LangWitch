@@ -12,6 +12,7 @@
 #include "normalize.h"
 #include <fstream>
 using namespace std;
+
 // Function to load words from a file into a LanguageTrie
 void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     ifstream file(filename);
@@ -97,6 +98,8 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
             bestLang = lang;
         }
     }
+
+
     int total = 0;
     for (const string& row : langs) {
         for (const string& col : langs) {
@@ -176,14 +179,19 @@ int main() {
     runTests(english, french, german, spanish, italian);
 
     string input;
-    cout << "Enter a sentence to detect its language:\n> ";
-    getline(cin, input);
 
-    auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
-    cout << fixed << setprecision(2);
-    cout << "Detected Language: " << detectedLang << " | Confidence: " << (confidence * 100.0) << "%\n";
+    while (true) {
+        cout << "Enter a sentence to detect its language (or type 'exit' to quit):\n> ";
+        getline(cin, input);
 
+        if (input == ":q") {
+            break;
+        }
 
+        auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
+        cout << fixed << setprecision(2);
+        cout << "Detected Language: " << detectedLang << " | Confidence: " << (confidence * 100.0) << "%\n";
+    }
 
     // Clean up
     delete english;
