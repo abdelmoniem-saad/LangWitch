@@ -36,6 +36,21 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     LanguageTrie* spanish,
     LanguageTrie* italian
     ) {
+
+
+    // Check if input is empty or contains only non-alphabetic characters
+    bool hasAlphabetic = false;
+    for (char ch : input) {
+        if (isalpha(ch)) {
+            hasAlphabetic = true;
+            break;
+        }
+    }
+    if (!hasAlphabetic) {
+        // Handle empty or non-alphabetic input explicitly
+        return {"Unknown", 0.0};
+    }
+
     istringstream stream(input);
     string word;
 
@@ -106,7 +121,7 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     for (const auto& row : langs) {
         for (const auto& col : langs) {
             if (!contributors[row][col].empty()) {
-                std::cout << row << " " << col << " : ";
+                cout << row << " " << col << " : ";
                 for (const auto& w : contributors[row][col]) {
                     cout << w << " ";
                 }
@@ -115,10 +130,31 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
     cout << fixed << setprecision(2);
-    cout << "\nPredicted Language: " << bestLang << " | Confidence: " << (confidence * 100.0) << "%\n";
     return {bestLang, confidence};
 }
 
+void runTests(LanguageTrie* english, LanguageTrie* french, LanguageTrie* german, LanguageTrie* spanish, LanguageTrie* italian) {
+    vector<pair<string, string>> testCases = {
+        {"hello world", "English"},
+        {"bonjour le monde", "French"},
+        {"hallo welt", "German"},
+        {"hola mundo", "Spanish"},
+        {"ciao mondo", "Italian"},
+        {"hello bonjour hallo hola ciao", "English"}, // Mixed input
+        {"", "Unknown"} // Empty input
+    };
+
+    cout << "\n--- Running Test Cases ---\n";
+    for (const auto& testCase : testCases) {
+        const string& input = testCase.first;
+        const string& expected = testCase.second;
+
+        auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
+        cout << "Input: \"" << input << "\" | Expected: " << expected
+                  << " | Detected: " << detectedLang
+                  << " | Confidence: " << (confidence * 100.0) << "%\n";
+    }
+}
 
 int main() {
     // Create tries
@@ -136,11 +172,19 @@ int main() {
     loadWordsFromFile("spanish.txt", spanish);
     loadWordsFromFile("italian.txt", italian);
 
+    // Run test cases
+    runTests(english, french, german, spanish, italian);
+
     string input;
     cout << "Enter a sentence to detect its language:\n> ";
     getline(cin, input);
 
-    detectLanguage(input, english, french, german, spanish, italian);
+    auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
+    cout << fixed << setprecision(2);
+    cout << "Detected Language: " << detectedLang << " | Confidence: " << (confidence * 100.0) << "%\n";
+
+
+
     // Clean up
     delete english;
     delete french;
