@@ -181,16 +181,17 @@ int main() {
     string input;
 
     while (true) {
-        cout << "Enter a sentence to detect its language (or type 'exit' to quit):\n> ";
+        cout << "Enter a sentence to detect its language (or type 'Stop eating the processor' to quit):\n> ";
         getline(cin, input);
 
-        if (input == ":q") {
+        if (input == "Stop eating the processor") {
+            cout << "Just Kidding! Tries are leightwight on the processor";
             break;
         }
 
         auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
         cout << fixed << setprecision(2);
-        cout << "Detected Language: " << detectedLang << " | Confidence: " << (confidence * 100.0) << "%\n";
+        cout << "Detected Language: " << detectedLang;
     }
 
     // Clean up
