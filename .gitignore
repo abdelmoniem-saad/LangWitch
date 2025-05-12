@@ -11,6 +11,19 @@ CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
 
+CMakeFiles/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.user
+*.swp
+*~
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
 # Prerequisites
 *.d
 
@@ -43,4 +56,8 @@ CMakeUserPresets.json
 *.exe
 *.out
 *.app
+
+.idea/
+.fleet/
+
 
