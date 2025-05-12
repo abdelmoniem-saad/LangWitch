@@ -2,10 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "LangWitch.exe"
-		},
-		{
-			"path" : "LangWitch.pdb"
+			"path" : "LangWitch"
 		}
 	],
 	"backtrace" : 1,
@@ -14,11 +11,16 @@
 		"commands" : 
 		[
 			"add_executable",
-			"add_compile_options"
+			"target_link_libraries",
+			"add_compile_options",
+			"set_property",
+			"include",
+			"include_directories"
 		],
 		"files" : 
 		[
-			"CMakeLists.txt"
+			"CMakeLists.txt",
+			"/home/mnm/.local/share/JetBrains/Toolbox/apps/clion/bin/cmake/linux/x64/share/cmake-3.31/Modules/UsewxWidgets.cmake"
 		],
 		"nodes" : 
 		[
@@ -34,8 +36,36 @@
 			{
 				"command" : 1,
 				"file" : 0,
+				"line" : 19,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
 				"line" : 7,
 				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 17,
+				"parent" : 0
+			},
+			{
+				"file" : 1,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 55,
+				"parent" : 5
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 46,
+				"parent" : 5
 			}
 		]
 	},
@@ -48,12 +78,44 @@
 					"fragment" : "-g -std=gnu++17 -fdiagnostics-color=always"
 				},
 				{
-					"backtrace" : 2,
+					"backtrace" : 3,
 					"fragment" : "-finput-charset=UTF-8"
 				},
 				{
-					"backtrace" : 2,
+					"backtrace" : 3,
 					"fragment" : "-fexec-charset=UTF-8"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 6,
+					"define" : "WXUSINGDLL"
+				},
+				{
+					"backtrace" : 6,
+					"define" : "_FILE_OFFSET_BITS=64"
+				},
+				{
+					"backtrace" : 6,
+					"define" : "__WXGTK3__"
+				},
+				{
+					"backtrace" : 6,
+					"define" : "__WXGTK__"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 7,
+					"isSystem" : true,
+					"path" : "/usr/lib/wx/include/gtk3-unicode-3.2"
+				},
+				{
+					"backtrace" : 7,
+					"isSystem" : true,
+					"path" : "/usr/include/wx-3.2"
 				}
 			],
 			"language" : "CXX",
@@ -85,14 +147,20 @@
 				"role" : "flags"
 			},
 			{
-				"fragment" : "-lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32",
+				"backtrace" : 2,
+				"fragment" : "-lwx_gtk3u_core-3.2",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lwx_baseu-3.2",
 				"role" : "libraries"
 			}
 		],
 		"language" : "CXX"
 	},
 	"name" : "LangWitch",
-	"nameOnDisk" : "LangWitch.exe",
+	"nameOnDisk" : "LangWitch",
 	"paths" : 
 	{
 		"build" : ".",

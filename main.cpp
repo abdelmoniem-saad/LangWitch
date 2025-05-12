@@ -1,16 +1,17 @@
-//
-// Created by Basmala Kamal on 5/4/2025.
-//
-
-#include <iostream>
+#include <wx/wx.h>
+#include <wx/textctrl.h>
+#include <wx/menu.h>
+#include <wx/msgdlg.h>
+#include "language_trie.h"
+#include "normalize.h"
 #include <sstream>
+#include <iostream>
 #include <map>
 #include <vector>
 #include <set>
 #include <iomanip>
-#include "language_trie.h"
-#include "normalize.h"
 #include <fstream>
+
 using namespace std;
 
 // Function to load words from a file into a LanguageTrie
@@ -29,17 +30,15 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     file.close();
 }
 
-    pair<string, double> detectLanguage(
+// Function to detect the language of a given input
+pair<string, double> detectLanguage(
     const string& input,
     LanguageTrie* english,
     LanguageTrie* french,
     LanguageTrie* german,
     LanguageTrie* spanish,
     LanguageTrie* italian
-    ) {
-
-
-    // Check if input is empty or contains only non-alphabetic characters
+) {
     bool hasAlphabetic = false;
     for (char ch : input) {
         if (isalpha(ch)) {
@@ -48,7 +47,6 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
     if (!hasAlphabetic) {
-        // Handle empty or non-alphabetic input explicitly
         return {"Unknown", 0.0};
     }
 
@@ -99,7 +97,6 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
 
-
     int total = 0;
     for (const string& row : langs) {
         for (const string& col : langs) {
@@ -107,98 +104,119 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
     double confidence = (total > 0) ? static_cast<double>(matrix[bestLang][bestLang]) / total : 0.0;
-    cout << "\n--- Language Word Match Square Matrix ---\n";
-    cout << setw(10) << "";
-    for (const auto& col : langs) {
-        cout << setw(10) << col;
-    }
-    cout << "\n";
-    for (const auto& row : langs) {
-        cout << setw(10) << row;
-        for (const auto& col : langs) {
-            cout << setw(10) << matrix[row][col];
-        }
-        cout << "\n";
-    }
-    cout << "\n--- Word Contributors per Matrix Cell ---\n";
-    for (const auto& row : langs) {
-        for (const auto& col : langs) {
-            if (!contributors[row][col].empty()) {
-                cout << row << " " << col << " : ";
-                for (const auto& w : contributors[row][col]) {
-                    cout << w << " ";
-                }
-                cout << "\n";
-            }
-        }
-    }
-    cout << fixed << setprecision(2);
     return {bestLang, confidence};
 }
 
-void runTests(LanguageTrie* english, LanguageTrie* french, LanguageTrie* german, LanguageTrie* spanish, LanguageTrie* italian) {
-    vector<pair<string, string>> testCases = {
-        {"hello world", "English"},
-        {"bonjour le monde", "French"},
-        {"hallo welt", "German"},
-        {"hola mundo", "Spanish"},
-        {"ciao mondo", "Italian"},
-        {"hello bonjour hallo hola ciao", "English"}, // Mixed input
-        {"", "Unknown"} // Empty input
-    };
+// Main Application Class
+class LangWitchApp : public wxApp {
+public:
+    virtual bool OnInit();
+};
 
-    cout << "\n--- Running Test Cases ---\n";
-    for (const auto& testCase : testCases) {
-        const string& input = testCase.first;
-        const string& expected = testCase.second;
+// Main Frame Class
+class LangWitchFrame : public wxFrame {
+public:
+    LangWitchFrame(const wxString& title);
 
-        auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
-        cout << "Input: \"" << input << "\" | Expected: " << expected
-                  << " | Detected: " << detectedLang << endl;
-    }
+private:
+    wxTextCtrl* inputField;
+    wxTextCtrl* outputField;
+
+    LanguageTrie* english;
+    LanguageTrie* french;
+    LanguageTrie* german;
+    LanguageTrie* spanish;
+    LanguageTrie* italian;
+
+    void OnDetectLanguage(wxCommandEvent& event);
+    void OnExit(wxCommandEvent& event);
+    void OnAbout(wxCommandEvent& event);
+
+    void LoadLanguageTries();
+    wxDECLARE_EVENT_TABLE();
+};
+
+// Event Table
+wxBEGIN_EVENT_TABLE(LangWitchFrame, wxFrame)
+    EVT_MENU(wxID_EXIT, LangWitchFrame::OnExit)
+    EVT_MENU(wxID_ABOUT, LangWitchFrame::OnAbout)
+    EVT_BUTTON(1001, LangWitchFrame::OnDetectLanguage)
+wxEND_EVENT_TABLE()
+
+wxIMPLEMENT_APP(LangWitchApp);
+
+bool LangWitchApp::OnInit() {
+    LangWitchFrame* frame = new LangWitchFrame("LangWitch Language Detector");
+    frame->Show(true);
+    return true;
 }
 
-int main() {
-    // Create tries
-    LanguageTrie* english = new LanguageTrie("English");
-    LanguageTrie* french = new LanguageTrie("French");
-    LanguageTrie* german = new LanguageTrie("German");
-    LanguageTrie* spanish = new LanguageTrie("Spanish");
-    LanguageTrie* italian = new LanguageTrie("Italian");
+LangWitchFrame::LangWitchFrame(const wxString& title)
+    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(600, 400)) {
+    // Menu Bar
+    wxMenu* fileMenu = new wxMenu;
+    fileMenu->Append(wxID_EXIT, "E&xit\tAlt-X", "Quit this program");
 
+    wxMenu* helpMenu = new wxMenu;
+    helpMenu->Append(wxID_ABOUT, "&About\tF1", "Show about dialog");
 
-    // Load words from corpus files
+    wxMenuBar* menuBar = new wxMenuBar();
+    menuBar->Append(fileMenu, "&File");
+    menuBar->Append(helpMenu, "&Help");
+    SetMenuBar(menuBar);
+
+    // Input and Output Fields
+    wxPanel* panel = new wxPanel(this, wxID_ANY);
+    wxBoxSizer* vbox = new wxBoxSizer(wxVERTICAL);
+
+    wxStaticText* inputLabel = new wxStaticText(panel, wxID_ANY, "Enter Text:");
+    vbox->Add(inputLabel, 0, wxALL, 10);
+
+    inputField = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 30));
+    vbox->Add(inputField, 0, wxALL | wxEXPAND, 10);
+
+    wxButton* detectButton = new wxButton(panel, 1001, "Detect Language");
+    vbox->Add(detectButton, 0, wxALL | wxALIGN_CENTER, 10);
+
+    wxStaticText* outputLabel = new wxStaticText(panel, wxID_ANY, "Detected Language:");
+    vbox->Add(outputLabel, 0, wxALL, 10);
+
+    outputField = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 100), wxTE_MULTILINE | wxTE_READONLY);
+    vbox->Add(outputField, 1, wxALL | wxEXPAND, 10);
+
+    panel->SetSizer(vbox);
+
+    // Initialize Language Tries
+    LoadLanguageTries();
+}
+
+void LangWitchFrame::LoadLanguageTries() {
+    english = new LanguageTrie("English");
+    french = new LanguageTrie("French");
+    german = new LanguageTrie("German");
+    spanish = new LanguageTrie("Spanish");
+    italian = new LanguageTrie("Italian");
+
     loadWordsFromFile("english.txt", english);
     loadWordsFromFile("french.txt", french);
     loadWordsFromFile("german.txt", german);
     loadWordsFromFile("spanish.txt", spanish);
     loadWordsFromFile("italian.txt", italian);
+}
 
-    // Run test cases
-    runTests(english, french, german, spanish, italian);
+void LangWitchFrame::OnDetectLanguage(wxCommandEvent& event) {
+    std::string input = inputField->GetValue().ToStdString();
+    auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
 
-    string input;
+    std::ostringstream result;
+    result << "Language: " << detectedLang << "\nConfidence: " << confidence * 100 << "%";
+    outputField->SetValue(result.str());
+}
 
-    while (true) {
-        cout << "Enter a sentence to detect its language (or type 'Stop eating the processor' to quit):\n> ";
-        getline(cin, input);
+void LangWitchFrame::OnExit(wxCommandEvent& event) {
+    Close(true);
+}
 
-        if (input == "Stop eating the processor") {
-            cout << "Just Kidding! Tries are leightwight on the processor";
-            break;
-        }
-
-        auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
-        cout << fixed << setprecision(2);
-        cout << "Detected Language: " << detectedLang << endl;
-    }
-
-    // Clean up
-    delete english;
-    delete french;
-    delete german;
-    delete spanish;
-    delete italian;
-
-    return 0;
+void LangWitchFrame::OnAbout(wxCommandEvent& event) {
+    wxMessageBox("LangWitch Language Detector\nDeveloped with wxWidgets", "About LangWitch", wxOK | wxICON_INFORMATION, this);
 }

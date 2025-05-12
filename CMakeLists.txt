@@ -12,3 +12,8 @@ add_executable(LangWitch
         normalize.h
         trie_node.h
 )
+
+find_package(wxWidgets REQUIRED COMPONENTS core base)
+include(${wxWidgets_USE_FILE})
+
+target_link_libraries(LangWitch ${wxWidgets_LIBRARIES})
