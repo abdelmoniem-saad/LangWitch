@@ -124,7 +124,7 @@ class LangWitchFrame : public wxFrame {
 public:
     LangWitchFrame(const wxString& title);
     ~LangWitchFrame(); // Add this line
-    
+
     // ... rest of your class
     // Add this method to the class declaration
     void OnSave(wxCommandEvent& event);
@@ -243,15 +243,18 @@ void LangWitchFrame::LoadLanguageTries() {
 }
 
 void LangWitchFrame::OnDetectLanguage(wxCommandEvent& event) {
-    // In OnDetectLanguage method, add:
     SetStatusText("Detecting language...");
-    std::string input = inputField->GetValue().ToStdString();
+
+    // Use proper UTF-8 conversion
+    wxString wxInput = inputField->GetValue();
+    std::string input = wxInput.ToUTF8().data();
+
     auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
 
     std::ostringstream result;
     result << "Language: " << detectedLang << "\nConfidence: " << confidence * 100 << "%";
     outputField->SetValue(result.str());
-    // After detection is complete:
+
     SetStatusText("Detection complete");
 }
 
@@ -265,13 +268,13 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
 
    void LangWitchFrame::OnToggleDarkMode(wxCommandEvent& event) {
     bool darkMode = event.IsChecked();
-    
+
     // Define colors for dark and light modes
     wxColour textColor = darkMode ? wxColour(220, 220, 220) : wxColour(10, 10, 10);
     wxColour bgColor = darkMode ? wxColour(40, 40, 40) : wxColour(255, 255, 255);
     wxColour controlBgColor = darkMode ? wxColour(60, 60, 60) : wxColour(250, 250, 250);
     wxColour buttonBgColor = darkMode ? wxColour(80, 80, 80) : wxColour(225, 225, 225);
-    
+
     // Apply GTK theme at system level (most natural approach for KDE)
     #ifdef __WXGTK__
     if (darkMode) {
@@ -280,10 +283,10 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
         wxExecute("gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'", wxEXEC_ASYNC);
     }
     #endif
-    
+
     // Set frame and panel background
     SetBackgroundColour(bgColor);
-    
+
     // Apply to controls (text fields, buttons, labels)
     wxPanel* mainPanel = nullptr;
     for (wxWindow* child : GetChildren()) {
@@ -293,7 +296,7 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
             break;
         }
     }
-    
+
     if (mainPanel) {
         for (wxWindow* control : mainPanel->GetChildren()) {
             if (wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>(control)) {
@@ -309,17 +312,17 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
             }
         }
     }
-    
+
     // Update status bar
     if (wxStatusBar* statusBar = GetStatusBar()) {
         statusBar->SetBackgroundColour(darkMode ? wxColour(50, 50, 50) : wxColour(240, 240, 240));
         statusBar->SetForegroundColour(textColor);
     }
-    
+
     // Force refresh
     Refresh();
     Update();
-    
+
     // Inform user about menu bar changes
     wxString message = "Menu bar styling requires a restart to fully apply the theme.";
     GetStatusBar()->SetStatusText(message);
@@ -327,60 +330,60 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
 
 // Then implement the handlers:
 void LangWitchFrame::OnOpen(wxCommandEvent& event) {
-    wxFileDialog openDialog(this, "Open Text File", "", "", 
-                           "Text files (*.txt)|*.txt|All files (*.*)|*.*", 
+    wxFileDialog openDialog(this, "Open Text File", "", "",
+                           "Text files (*.txt)|*.txt|All files (*.*)|*.*",
                            wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    
+
     if (openDialog.ShowModal() == wxID_CANCEL)
         return;
-        
+
     wxFileInputStream input(openDialog.GetPath());
     if (!input.IsOk()) {
         wxLogError("Cannot open file '%s'.", openDialog.GetPath());
         return;
     }
-    
+
     wxTextInputStream text(input);
     wxString line;
     wxString content;
-    
+
     while (!input.Eof()) {
         line = text.ReadLine();
         content.Append(line);
         content.Append("\n");
     }
-    
+
     inputField->SetValue(content);
     SetStatusText("File loaded.");
 }
 
 // Implementation
 void LangWitchFrame::OnSave(wxCommandEvent& event) {
-    wxFileDialog saveDialog(this, "Save Text File", "", "", 
-                          "Text files (*.txt)|*.txt|All files (*.*)|*.*", 
+    wxFileDialog saveDialog(this, "Save Text File", "", "",
+                          "Text files (*.txt)|*.txt|All files (*.*)|*.*",
                           wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-    
+
     if (saveDialog.ShowModal() == wxID_CANCEL)
         return;
-        
+
     wxFileOutputStream output(saveDialog.GetPath());
     if (!output.IsOk()) {
         wxLogError("Cannot save to file '%s'.", saveDialog.GetPath());
         return;
     }
-    
+
     wxTextOutputStream text(output);
-    
+
     // Save the input text
     text.WriteString("=== INPUT TEXT ===\n");
     text.WriteString(inputField->GetValue());
-    
+
     // Add a separator
     text.WriteString("\n\n=== LANGUAGE DETECTION RESULT ===\n");
-    
+
     // Save the detection result
     text.WriteString(outputField->GetValue());
-    
+
     SetStatusText("Input text and detection result saved.");
 }
 
