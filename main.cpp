@@ -16,6 +16,8 @@
 #include <functional>
 #include <queue>
 #include <wx/notebook.h>
+#include <wx/stdpaths.h>
+#include <wx/filename.h>
 #include <iomanip>
 #include <sstream>
 #include <wx/config.h>
@@ -56,15 +58,19 @@ DetectionResult detectLanguageWithMatrix(
     LanguageTrie* spanish,
     LanguageTrie* italian
 ) {
+
     DetectionResult result;
 
     // Check for empty or non-alphabetic input
     bool hasAlphabetic = false;
-    for (char ch : input) {
-        if (isalpha(ch)) {
+    for (size_t i = 0; i < input.size(); ) {
+        // Check for UTF-8 sequences
+        unsigned char c = static_cast<unsigned char>(input[i]);
+        if ((c >= 0xC0 && c <= 0xF7) || isalpha(c)) {
             hasAlphabetic = true;
             break;
         }
+        i++;
     }
 
     if (!hasAlphabetic) {
@@ -133,9 +139,9 @@ DetectionResult detectLanguageWithMatrix(
     result.language = bestLang;
     result.confidence = (total > 0) ? static_cast<double>(result.matrix[bestLang][bestLang]) / total : 0.0;
 
+
     return result;
 }
-
 
 // Main Application Class
 class LangWitchApp : public wxApp {
@@ -317,9 +323,7 @@ void LangWitchFrame::LoadLanguageTries() {
 void LangWitchFrame::OnDetectLanguage(wxCommandEvent& event) {
     SetStatusText("Detecting language...");
 
-    // Use proper UTF-8 conversion
-    wxString wxInput = inputField->GetValue();
-    std::string input = wxInput.ToUTF8().data();
+    const std::string input = inputField->GetValue().utf8_string();   // explicit UTF-8
 
     // Use the new function that returns more detailed results
     DetectionResult result = detectLanguageWithMatrix(input, english, french, german, spanish, italian);
@@ -361,10 +365,11 @@ void LangWitchFrame::OnDetectLanguage(wxCommandEvent& event) {
         }
     }
 
-    outputField->SetValue(output.str());
+    const wxString wxOutput = wxString::FromUTF8(output.str());
+    outputField->SetValue(wxOutput);
+
     SetStatusText("Detection complete");
 }
-
 
 void LangWitchFrame::OnExit(wxCommandEvent& event) {
     Close(true);
@@ -451,13 +456,46 @@ void LangWitchFrame::OnRunTests(wxCommandEvent& event) {
 
     // Define test cases
     std::vector<std::pair<std::string, std::string>> testCases = {
+        // 1. Exact matches
         {"hello world", "English"},
         {"bonjour le monde", "French"},
         {"hallo welt", "German"},
         {"hola mundo", "Spanish"},
         {"ciao mondo", "Italian"},
-        {"hello bonjour hallo hola ciao", "English"}, // Mixed input
-        {"", "Unknown"} // Empty input
+        // 2. Mixed input – all languages
+        {"hello bonjour hallo hola ciao", "English"}, // Based on majority match
+        // 3. Empty input
+        {"", "Unknown"},
+        // 4. Input with accents (French)
+        {"je suis très content", "French"}, // includes accents (très)
+        // 5. Input with accent-less equivalents
+        {"je suis tres content", "French"}, // tests normalization fallback
+        // 6. Shared word (English + French)
+        {"content", "English"}, // Appears in both, should be low confidence
+        // 7. German special character ß
+        {"straße", "German"}, // exact German word with ß
+        // 8. Normalized form of German ß
+        {"strasse", "German"}, // normalization test if you support mapping ß -> ss or s
+        // 9. Word that appears in multiple languages
+        {"pizza", "Italian"}, // might exist in several dictionaries
+        // 10. Input with numbers and punctuation
+        {"12345! bonjour.", "French"}, // numbers/punct ignored
+        // 11. Capital accented letter
+        {"À la carte", "French"}, // capital À
+        // 12. Out-of-vocabulary words
+        {"flerbin schmaggle", "Unknown"}, // nonsense / OOV
+        // 13. Tie situation
+        {"world monde welt", "English"}, // 1 word per language, expect tie handling
+        // 14. Minor typos (up to 2 modifications)
+        {"helo wrld", "English"}, // typo for "hello world"
+        {"bonjor le mnde", "French"}, // typo for "bonjour le monde"
+        {"hallo weltz", "German"}, // extra char
+        {"holaa mundo", "Spanish"}, // double 'a'
+        {"cia mond", "Italian"}, // missing 'o'
+        // 15. Typo in accented word
+        {"tres contnet", "French"}, // typo in "très content"
+        // 16. Garbage with 1 correct word
+        {"flargle hallo blurt", "German"},
     };
 
     std::ostringstream output;
@@ -497,7 +535,9 @@ void LangWitchFrame::OnRunTests(wxCommandEvent& event) {
         output << "\n----------------------------------------\n\n";
     }
 
-    testOutputField->SetValue(output.str());
+    const wxString wxOutput = wxString::FromUTF8(output.str());
+    testOutputField->SetValue(wxOutput);
+
     SetStatusText("Test cases completed");
 }
 
