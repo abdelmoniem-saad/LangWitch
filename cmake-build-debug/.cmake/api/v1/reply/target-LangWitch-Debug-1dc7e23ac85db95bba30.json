@@ -13,14 +13,12 @@
 			"add_executable",
 			"target_link_libraries",
 			"add_compile_options",
-			"set_property",
-			"include",
-			"include_directories"
+			"target_compile_definitions",
+			"target_include_directories"
 		],
 		"files" : 
 		[
-			"CMakeLists.txt",
-			"/home/mnm/.local/share/JetBrains/Toolbox/apps/clion/bin/cmake/linux/x64/share/cmake-3.31/Modules/UsewxWidgets.cmake"
+			"CMakeLists.txt"
 		],
 		"nodes" : 
 		[
@@ -30,13 +28,13 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 9,
+				"line" : 17,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 19,
+				"line" : 28,
 				"parent" : 0
 			},
 			{
@@ -46,26 +44,16 @@
 				"parent" : 0
 			},
 			{
-				"command" : 4,
+				"command" : 3,
 				"file" : 0,
-				"line" : 17,
+				"line" : 29,
 				"parent" : 0
 			},
 			{
-				"file" : 1,
-				"parent" : 4
-			},
-			{
-				"command" : 3,
-				"file" : 1,
-				"line" : 55,
-				"parent" : 5
-			},
-			{
-				"command" : 5,
-				"file" : 1,
-				"line" : 46,
-				"parent" : 5
+				"command" : 4,
+				"file" : 0,
+				"line" : 27,
+				"parent" : 0
 			}
 		]
 	},
@@ -89,32 +77,30 @@
 			"defines" : 
 			[
 				{
-					"backtrace" : 6,
+					"backtrace" : 4,
 					"define" : "WXUSINGDLL"
 				},
 				{
-					"backtrace" : 6,
+					"backtrace" : 4,
 					"define" : "_FILE_OFFSET_BITS=64"
 				},
 				{
-					"backtrace" : 6,
+					"backtrace" : 4,
 					"define" : "__WXGTK3__"
 				},
 				{
-					"backtrace" : 6,
+					"backtrace" : 4,
 					"define" : "__WXGTK__"
 				}
 			],
 			"includes" : 
 			[
 				{
-					"backtrace" : 7,
-					"isSystem" : true,
+					"backtrace" : 5,
 					"path" : "/usr/lib/wx/include/gtk3-unicode-3.2"
 				},
 				{
-					"backtrace" : 7,
-					"isSystem" : true,
+					"backtrace" : 5,
 					"path" : "/usr/include/wx-3.2"
 				}
 			],

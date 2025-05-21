@@ -15,6 +15,7 @@
 #include <fstream>
 #include <functional>
 #include <queue>
+#include <wx/notebook.h>
 #include <iomanip>
 #include <sstream>
 #include <wx/config.h>
@@ -146,16 +147,26 @@ public:
 class LangWitchFrame : public wxFrame {
 public:
     LangWitchFrame(const wxString& title);
-    ~LangWitchFrame(); // Add this line
+    ~LangWitchFrame();
 
-    // ... rest of your class
-    // Add this method to the class declaration
     void OnSave(wxCommandEvent& event);
 
 private:
+    // Add notebook reference
+    wxNotebook* notebook;
+
+    // Panel for each tab
+    wxPanel* mainPanel;
+    wxPanel* testPanel;
+
+    // Controls for main tab
     wxTextCtrl* inputField;
     wxTextCtrl* outputField;
 
+    // Controls for test tab
+    wxTextCtrl* testOutputField;
+
+    // Existing members
     LanguageTrie* english;
     LanguageTrie* french;
     LanguageTrie* german;
@@ -166,9 +177,10 @@ private:
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnToggleDarkMode(wxCommandEvent& event);
-    void OnOpen(wxCommandEvent& event);  // Add this declaration
-
+    void OnOpen(wxCommandEvent& event);
+    void OnRunTests(wxCommandEvent& event); // New handler
     void LoadLanguageTries();
+
     wxDECLARE_EVENT_TABLE();
 };
 
@@ -179,9 +191,10 @@ wxBEGIN_EVENT_TABLE(LangWitchFrame, wxFrame)
     EVT_BUTTON(1001, LangWitchFrame::OnDetectLanguage)
     EVT_MENU(1003, LangWitchFrame::OnToggleDarkMode)
     EVT_MENU(wxID_OPEN, LangWitchFrame::OnOpen)
-    // Add to event table
     EVT_MENU(wxID_SAVE, LangWitchFrame::OnSave)
+    EVT_BUTTON(1002, LangWitchFrame::OnRunTests) // Add button handler for test tab
 wxEND_EVENT_TABLE()
+
 
 wxIMPLEMENT_APP(LangWitchApp);
 
@@ -192,10 +205,10 @@ bool LangWitchApp::OnInit() {
 }
 
 LangWitchFrame::LangWitchFrame(const wxString& title)
-    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(600, 400)),
+    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(600, 500)),
       english(nullptr), french(nullptr), german(nullptr), spanish(nullptr), italian(nullptr) {
-    // Rest of constructor
-    // Menu Bar
+
+    // Menu Bar (keep existing menu code unchanged)
     wxMenu* fileMenu = new wxMenu;
     fileMenu->Append(wxID_OPEN, "&Open\tCtrl+O", "Open a file");
     fileMenu->Append(wxID_SAVE, "&Save\tCtrl+S", "Save current text");
@@ -205,55 +218,85 @@ LangWitchFrame::LangWitchFrame(const wxString& title)
     wxMenu* helpMenu = new wxMenu;
     helpMenu->Append(wxID_ABOUT, "&About\tF1", "Show about dialog");
 
-
-
     wxMenuBar* menuBar = new wxMenuBar();
     menuBar->Append(fileMenu, "&File");
     menuBar->Append(helpMenu, "&Help");
     SetMenuBar(menuBar);
 
-    // Add a preferences menu
+    // Preferences menu
     wxMenu* prefsMenu = new wxMenu;
     prefsMenu->AppendCheckItem(1003, "Dark Mode", "Toggle dark mode");
     menuBar->Append(prefsMenu, "&Preferences");
 
-    // Input and Output Fields
-    wxPanel* panel = new wxPanel(this, wxID_ANY);
-    wxBoxSizer* vbox = new wxBoxSizer(wxVERTICAL);
+    // Create the notebook control - this will hold both tabs
+    notebook = new wxNotebook(this, wxID_ANY);
 
-    wxStaticText* inputLabel = new wxStaticText(panel, wxID_ANY, "Enter Text:");
-    vbox->Add(inputLabel, 0, wxALL, 10);
+    // Create the main detection tab
+    mainPanel = new wxPanel(notebook, wxID_ANY);
+    wxBoxSizer* mainVbox = new wxBoxSizer(wxVERTICAL);
 
-    inputField = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 30));
-    vbox->Add(inputField, 0, wxALL | wxEXPAND, 10);
+    wxStaticText* inputLabel = new wxStaticText(mainPanel, wxID_ANY, "Enter Text:");
+    mainVbox->Add(inputLabel, 0, wxALL, 10);
 
-    wxButton* detectButton = new wxButton(panel, 1001, "Detect Language");
-    vbox->Add(detectButton, 0, wxALL | wxALIGN_CENTER, 10);
+    inputField = new wxTextCtrl(mainPanel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 30));
+    mainVbox->Add(inputField, 0, wxALL | wxEXPAND, 10);
 
-    wxStaticText* outputLabel = new wxStaticText(panel, wxID_ANY, "Detected Language:");
-    vbox->Add(outputLabel, 0, wxALL, 10);
+    wxButton* detectButton = new wxButton(mainPanel, 1001, "Detect Language");
+    mainVbox->Add(detectButton, 0, wxALL | wxALIGN_CENTER, 10);
 
-    outputField = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 300), wxTE_MULTILINE | wxTE_READONLY);
-    vbox->Add(outputField, 1, wxALL | wxEXPAND, 10);
+    wxStaticText* outputLabel = new wxStaticText(mainPanel, wxID_ANY, "Detected Language:");
+    mainVbox->Add(outputLabel, 0, wxALL, 10);
+
+    outputField = new wxTextCtrl(mainPanel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 300),
+                                 wxTE_MULTILINE | wxTE_READONLY);
+    mainVbox->Add(outputField, 1, wxALL | wxEXPAND, 10);
 
     // Set monospaced font for better matrix display
     wxFont monoFont(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
     outputField->SetFont(monoFont);
 
-    panel->SetSizer(vbox);
+    mainPanel->SetSizer(mainVbox);
+
+    // Create the test tab
+    testPanel = new wxPanel(notebook, wxID_ANY);
+    wxBoxSizer* testVbox = new wxBoxSizer(wxVERTICAL);
+
+    wxStaticText* testLabel = new wxStaticText(testPanel, wxID_ANY, "Test Cases:");
+    testVbox->Add(testLabel, 0, wxALL, 10);
+
+    wxButton* runTestsButton = new wxButton(testPanel, 1002, "Run Test Cases");
+    testVbox->Add(runTestsButton, 0, wxALL | wxALIGN_CENTER, 10);
+
+    testOutputField = new wxTextCtrl(testPanel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 350),
+                                     wxTE_MULTILINE | wxTE_READONLY);
+    testVbox->Add(testOutputField, 1, wxALL | wxEXPAND, 10);
+
+    // Set monospaced font for test output display
+    testOutputField->SetFont(monoFont);
+
+    testPanel->SetSizer(testVbox);
+
+    // Add the tabs to the notebook
+    notebook->AddPage(mainPanel, "Language Detection");
+    notebook->AddPage(testPanel, "Test Cases");
+
+    // Set up the main sizer for the frame
+    wxBoxSizer* frameSizer = new wxBoxSizer(wxVERTICAL);
+    frameSizer->Add(notebook, 1, wxEXPAND | wxALL, 5);
+    SetSizer(frameSizer);
 
     // Initialize Language Tries
     LoadLanguageTries();
 
-wxAcceleratorEntry entries[1];
-entries[0].Set(wxACCEL_CTRL, (int)'D', 1001); // Ctrl+D for detection
+    wxAcceleratorEntry entries[1];
+    entries[0].Set(wxACCEL_CTRL, (int)'D', 1001); // Ctrl+D for detection
+    wxAcceleratorTable accel(1, entries);
+    SetAcceleratorTable(accel);
 
-wxAcceleratorTable accel(1, entries);
-SetAcceleratorTable(accel);
-
-CreateStatusBar();
-SetStatusText("Ready");
+    CreateStatusBar();
+    SetStatusText("Ready");
 }
+
 
 void LangWitchFrame::LoadLanguageTries() {
     english = new LanguageTrie("English");
@@ -326,53 +369,52 @@ void LangWitchFrame::OnExit(wxCommandEvent& event) {
 }
 
 void LangWitchFrame::OnAbout(wxCommandEvent& event) {
-    wxMessageBox("LangWitch Language Detector\nDeveloped with wxWidgets", "About LangWitch", wxOK | wxICON_INFORMATION, this);
+    wxMessageBox("LangWitch Language Detector\nDeveloped by Abd El-Moniem Saad and Basmala Kamal", "About LangWitch", wxOK | wxICON_INFORMATION, this);
 }
 
-   void LangWitchFrame::OnToggleDarkMode(wxCommandEvent& event) {
+void LangWitchFrame::OnToggleDarkMode(wxCommandEvent& event) {
     bool darkMode = event.IsChecked();
-
     // Define colors for dark and light modes
     wxColour textColor = darkMode ? wxColour(220, 220, 220) : wxColour(10, 10, 10);
     wxColour bgColor = darkMode ? wxColour(40, 40, 40) : wxColour(255, 255, 255);
     wxColour controlBgColor = darkMode ? wxColour(60, 60, 60) : wxColour(250, 250, 250);
     wxColour buttonBgColor = darkMode ? wxColour(80, 80, 80) : wxColour(225, 225, 225);
 
-    // Apply GTK theme at system level (most natural approach for KDE)
-    #ifdef __WXGTK__
-    if (darkMode) {
-        wxExecute("gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'", wxEXEC_ASYNC);
-    } else {
-        wxExecute("gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'", wxEXEC_ASYNC);
-    }
-    #endif
-
-    // Set frame and panel background
+    // Set frame and notebook background
     SetBackgroundColour(bgColor);
+    notebook->SetBackgroundColour(bgColor);
 
-    // Apply to controls (text fields, buttons, labels)
-    wxPanel* mainPanel = nullptr;
-    for (wxWindow* child : GetChildren()) {
-        if (wxPanel* panel = dynamic_cast<wxPanel*>(child)) {
-            mainPanel = panel;
-            panel->SetBackgroundColour(bgColor);
-            break;
+    // Apply to both tabs
+    mainPanel->SetBackgroundColour(bgColor);
+    testPanel->SetBackgroundColour(bgColor);
+
+    // Update main panel controls
+    for (wxWindow* control : mainPanel->GetChildren()) {
+        if (wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>(control)) {
+            textCtrl->SetBackgroundColour(controlBgColor);
+            textCtrl->SetForegroundColour(textColor);
+        }
+        else if (wxButton* button = dynamic_cast<wxButton*>(control)) {
+            button->SetBackgroundColour(buttonBgColor);
+            button->SetForegroundColour(textColor);
+        }
+        else if (wxStaticText* label = dynamic_cast<wxStaticText*>(control)) {
+            label->SetForegroundColour(textColor);
         }
     }
 
-    if (mainPanel) {
-        for (wxWindow* control : mainPanel->GetChildren()) {
-            if (wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>(control)) {
-                textCtrl->SetBackgroundColour(controlBgColor);
-                textCtrl->SetForegroundColour(textColor);
-            }
-            else if (wxButton* button = dynamic_cast<wxButton*>(control)) {
-                button->SetBackgroundColour(buttonBgColor);
-                button->SetForegroundColour(textColor);
-            }
-            else if (wxStaticText* label = dynamic_cast<wxStaticText*>(control)) {
-                label->SetForegroundColour(textColor);
-            }
+    // Update test panel controls
+    for (wxWindow* control : testPanel->GetChildren()) {
+        if (wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>(control)) {
+            textCtrl->SetBackgroundColour(controlBgColor);
+            textCtrl->SetForegroundColour(textColor);
+        }
+        else if (wxButton* button = dynamic_cast<wxButton*>(control)) {
+            button->SetBackgroundColour(buttonBgColor);
+            button->SetForegroundColour(textColor);
+        }
+        else if (wxStaticText* label = dynamic_cast<wxStaticText*>(control)) {
+            label->SetForegroundColour(textColor);
         }
     }
 
@@ -382,6 +424,13 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
         statusBar->SetForegroundColour(textColor);
     }
 
+    wxFont tabFont = notebook->GetFont();
+    notebook->SetForegroundColour(textColor);
+
+    // Force refresh for notebook tabs
+    notebook->Refresh();
+
+
     // Force refresh
     Refresh();
     Update();
@@ -390,6 +439,66 @@ void LangWitchFrame::OnAbout(wxCommandEvent& event) {
     wxString message = "Menu bar styling requires a restart to fully apply the theme.";
     GetStatusBar()->SetStatusText(message);
 }
+
+
+void LangWitchFrame::OnRunTests(wxCommandEvent& event) {
+    SetStatusText("Running test cases...");
+
+    // Clear test output
+    testOutputField->Clear();
+
+    // Define test cases
+    std::vector<std::pair<std::string, std::string>> testCases = {
+        {"hello world", "English"},
+        {"bonjour le monde", "French"},
+        {"hallo welt", "German"},
+        {"hola mundo", "Spanish"},
+        {"ciao mondo", "Italian"},
+        {"hello bonjour hallo hola ciao", "English"}, // Mixed input
+        {"", "Unknown"} // Empty input
+    };
+
+    std::ostringstream output;
+    output << "=== Running Test Cases ===\n\n";
+
+    for (const auto& testCase : testCases) {
+        const std::string& input = testCase.first;
+        const std::string& expected = testCase.second;
+
+        // Use the detectLanguageWithMatrix function to get detailed results
+        DetectionResult result = detectLanguageWithMatrix(input, english, french, german, spanish, italian);
+
+        output << "Input: \"" << input << "\"\n"
+               << "Expected: " << expected << "\n"
+               << "Detected: " << result.language << "\n"
+               << "Confidence: " << std::fixed << std::setprecision(2)
+               << result.confidence * 100 << "%\n\n";
+
+        // Add matrix for this test case
+        std::vector<std::string> langs = {"English", "French", "German", "Spanish", "Italian"};
+
+        output << "--- Language Matrix ---\n";
+        output << std::setw(10) << "";
+        for (const auto& col : langs) {
+            output << std::setw(10) << col;
+        }
+        output << "\n";
+
+        for (const auto& row : langs) {
+            output << std::setw(10) << row;
+            for (const auto& col : langs) {
+                output << std::setw(10) << result.matrix[row][col];
+            }
+            output << "\n";
+        }
+
+        output << "\n----------------------------------------\n\n";
+    }
+
+    testOutputField->SetValue(output.str());
+    SetStatusText("Test cases completed");
+}
+
 
 // Then implement the handlers:
 void LangWitchFrame::OnOpen(wxCommandEvent& event) {
