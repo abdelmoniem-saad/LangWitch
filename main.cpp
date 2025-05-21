@@ -288,9 +288,10 @@ LangWitchFrame::LangWitchFrame(const wxString& title)
     // Initialize Language Tries
     LoadLanguageTries();
 
-    wxAcceleratorEntry entries[1];
-    entries[0].Set(wxACCEL_CTRL, (int)'D', 1001); // Ctrl+D for detection
-    wxAcceleratorTable accel(1, entries);
+    wxAcceleratorEntry entries[2];
+    entries[0].Set(wxACCEL_CTRL, (int)'D', 1001); // Dtection
+    entries[1].Set(wxACCEL_CTRL, (int)'M', 1003); // Dark Mode
+    wxAcceleratorTable accel(2, entries);
     SetAcceleratorTable(accel);
 
     CreateStatusBar();
@@ -299,6 +300,7 @@ LangWitchFrame::LangWitchFrame(const wxString& title)
 
 
 void LangWitchFrame::LoadLanguageTries() {
+
     english = new LanguageTrie("English");
     french = new LanguageTrie("French");
     german = new LanguageTrie("German");
