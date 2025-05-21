@@ -2,8 +2,8 @@
 #include <wx/textctrl.h>
 #include <wx/menu.h>
 #include <wx/msgdlg.h>
-#include <wx/wfstream.h>  // Add this include for file operations
-#include <wx/txtstrm.h>   // Add this include for text stream
+#include <wx/wfstream.h>
+#include <wx/txtstrm.h>
 #include "language_trie.h"
 #include "normalize.h"
 #include <sstream>
@@ -15,10 +15,20 @@
 #include <fstream>
 #include <functional>
 #include <queue>
+#include <iomanip>
+#include <sstream>
 #include <wx/config.h>
 
 
 using namespace std;
+
+// Structure to hold detection results including matrix and contributors
+struct DetectionResult {
+    std::string language;
+    double confidence;
+    std::map<std::string, std::map<std::string, int>> matrix;
+    std::map<std::string, std::map<std::string, std::set<std::string>>> contributors;
+};
 
 // Function to load words from a file into a LanguageTrie
 void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
@@ -37,14 +47,17 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
 }
 
 // Function to detect the language of a given input
-pair<string, double> detectLanguage(
-    const string& input,
+DetectionResult detectLanguageWithMatrix(
+    const std::string& input,
     LanguageTrie* english,
     LanguageTrie* french,
     LanguageTrie* german,
     LanguageTrie* spanish,
     LanguageTrie* italian
 ) {
+    DetectionResult result;
+
+    // Check for empty or non-alphabetic input
     bool hasAlphabetic = false;
     for (char ch : input) {
         if (isalpha(ch)) {
@@ -52,26 +65,28 @@ pair<string, double> detectLanguage(
             break;
         }
     }
+
     if (!hasAlphabetic) {
-        return {"Unknown", 0.0};
+        result.language = "Unknown";
+        result.confidence = 0.0;
+        return result;
     }
 
-    istringstream stream(input);
-    string word;
-
-    map<string, map<string, double>> matrix;
-    map<string, map<string, set<string>>> contributors;
-    vector<string> langs = {"English", "French", "German", "Spanish", "Italian"};
+    // Process words and build matrix
+    std::istringstream stream(input);
+    std::string word;
+    std::vector<std::string> langs = {"English", "French", "German", "Spanish", "Italian"};
 
     while (stream >> word) {
-        set<string> detected;
-        string normalized = normalizeWord(word);
+        std::set<std::string> detected;
+        std::string normalized = normalizeWord(word);
 
         int en = english->getMatchScore(normalized);
         int fr = french->getMatchScore(normalized);
         int de = german->getMatchScore(normalized);
         int sp = spanish->getMatchScore(normalized);
         int it = italian->getMatchScore(normalized);
+
         if (en) detected.insert("English");
         if (fr) detected.insert("French");
         if (de) detected.insert("German");
@@ -80,38 +95,46 @@ pair<string, double> detectLanguage(
 
         if (!detected.empty()) {
             for (const auto& lang : detected) {
-                matrix[lang][lang] += 1;
-                contributors[lang][lang].insert(word);
+                result.matrix[lang][lang] += 1;
+                result.contributors[lang][lang].insert(word);
             }
+
             for (const auto& l1 : detected) {
                 for (const auto& l2 : detected) {
                     if (l1 != l2) {
-                        matrix[l1][l2] += 0.5;
-                        contributors[l1][l2].insert(word);
+                        result.matrix[l1][l2] += 0.5;
+                        result.contributors[l1][l2].insert(word);
                     }
                 }
             }
         }
     }
 
-    string bestLang;
+    // Find best language
+    std::string bestLang;
     int maxDiagonal = -1;
-    for (const string& lang : langs) {
-        if (matrix[lang][lang] > maxDiagonal) {
-            maxDiagonal = matrix[lang][lang];
+
+    for (const std::string& lang : langs) {
+        if (result.matrix[lang][lang] > maxDiagonal) {
+            maxDiagonal = result.matrix[lang][lang];
             bestLang = lang;
         }
     }
 
+    // Calculate total for confidence
     int total = 0;
-    for (const string& row : langs) {
-        for (const string& col : langs) {
-            if (row == col || row < col) total += matrix[row][col];
+    for (const std::string& row : langs) {
+        for (const std::string& col : langs) {
+            if (row == col || row < col) total += result.matrix[row][col];
         }
     }
-    double confidence = (total > 0) ? static_cast<double>(matrix[bestLang][bestLang]) / total : 0.0;
-    return {bestLang, confidence};
+
+    result.language = bestLang;
+    result.confidence = (total > 0) ? static_cast<double>(result.matrix[bestLang][bestLang]) / total : 0.0;
+
+    return result;
 }
+
 
 // Main Application Class
 class LangWitchApp : public wxApp {
@@ -210,8 +233,12 @@ LangWitchFrame::LangWitchFrame(const wxString& title)
     wxStaticText* outputLabel = new wxStaticText(panel, wxID_ANY, "Detected Language:");
     vbox->Add(outputLabel, 0, wxALL, 10);
 
-    outputField = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 100), wxTE_MULTILINE | wxTE_READONLY);
+    outputField = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(400, 300), wxTE_MULTILINE | wxTE_READONLY);
     vbox->Add(outputField, 1, wxALL | wxEXPAND, 10);
+
+    // Set monospaced font for better matrix display
+    wxFont monoFont(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+    outputField->SetFont(monoFont);
 
     panel->SetSizer(vbox);
 
@@ -249,14 +276,50 @@ void LangWitchFrame::OnDetectLanguage(wxCommandEvent& event) {
     wxString wxInput = inputField->GetValue();
     std::string input = wxInput.ToUTF8().data();
 
-    auto [detectedLang, confidence] = detectLanguage(input, english, french, german, spanish, italian);
+    // Use the new function that returns more detailed results
+    DetectionResult result = detectLanguageWithMatrix(input, english, french, german, spanish, italian);
 
-    std::ostringstream result;
-    result << "Language: " << detectedLang << "\nConfidence: " << confidence * 100 << "%";
-    outputField->SetValue(result.str());
+    std::ostringstream output;
+    std::vector<std::string> langs = {"English", "French", "German", "Spanish", "Italian"};
 
+    // Format the basic detection result
+    output << "Language: " << result.language << "\n";
+    output << "Confidence: " << std::fixed << std::setprecision(2) << result.confidence * 100 << "%\n\n";
+
+    // Add the matrix display
+    output << "--- Language Word Match Square Matrix ---\n";
+    output << std::setw(10) << "";
+    for (const auto& col : langs) {
+        output << std::setw(10) << col;
+    }
+    output << "\n";
+
+    for (const auto& row : langs) {
+        output << std::setw(10) << row;
+        for (const auto& col : langs) {
+            output << std::setw(10) << result.matrix[row][col];
+        }
+        output << "\n";
+    }
+
+    // Add word contributors information
+    output << "\n--- Word Contributors per Matrix Cell ---\n";
+    for (const auto& row : langs) {
+        for (const auto& col : langs) {
+            if (!result.contributors[row][col].empty()) {
+                output << row << " " << col << " : ";
+                for (const auto& w : result.contributors[row][col]) {
+                    output << w << " ";
+                }
+                output << "\n";
+            }
+        }
+    }
+
+    outputField->SetValue(output.str());
     SetStatusText("Detection complete");
 }
+
 
 void LangWitchFrame::OnExit(wxCommandEvent& event) {
     Close(true);
