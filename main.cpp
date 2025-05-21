@@ -13,7 +13,7 @@
 #include <fstream>
 using namespace std;
 
-// Function to load words from a file into a LanguageTrie
+
 void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -39,7 +39,7 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     ) {
 
 
-    // Check if input is empty or contains only non-alphabetic characters
+
     bool hasAlphabetic = false;
     for (char ch : input) {
         if (isalpha(ch)) {
@@ -48,7 +48,7 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
     if (!hasAlphabetic) {
-        // Handle empty or non-alphabetic input explicitly
+
         return {"Unknown", 0.0};
     }
 
@@ -138,13 +138,48 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
 
 void runTests(LanguageTrie* english, LanguageTrie* french, LanguageTrie* german, LanguageTrie* spanish, LanguageTrie* italian) {
     vector<pair<string, string>> testCases = {
+        // 1. Exact matches
         {"hello world", "English"},
         {"bonjour le monde", "French"},
         {"hallo welt", "German"},
         {"hola mundo", "Spanish"},
         {"ciao mondo", "Italian"},
-        {"hello bonjour hallo hola ciao", "English"}, // Mixed input
-        {"", "Unknown"} // Empty input
+        // 2. Mixed input – all languages
+        {"hello bonjour hallo hola ciao", "English"}, // Based on majority match
+        // 3. Empty input
+        {"", "Unknown"},
+        // 4. Input with accents (French)
+        {"je suis très content", "French"}, // includes accents (très)
+        // 5. Input with accent-less equivalents
+        {"je suis tres content", "French"}, // tests normalization fallback
+        // 6. Shared word (English + French)
+        {"content", "English"}, // Appears in both, should be low confidence
+        // 7. German special character ß
+        {"straße", "German"}, // exact German word with ß
+        // 8. Normalized form of German ß
+        {"strasse", "German"}, // normalization test if you support mapping ß -> ss or s
+        // 9. Word that appears in multiple languages
+        {"pizza", "Italian"}, // might exist in several dictionaries
+        // 10. Input with numbers and punctuation
+        {"12345! bonjour.", "French"}, // numbers/punct ignored
+        // 11. Capital accented letter
+        {"À la carte", "French"}, // capital À
+        // 12. Out-of-vocabulary words
+        {"flerbin schmaggle", "Unknown"}, // nonsense / OOV
+        // 13. Tie situation
+        {"world monde welt", "English"}, // 1 word per language, expect tie handling
+        // 14. Minor typos (up to 2 modifications)
+            {"helo wrld", "English"},              // typo for "hello world"
+            {"bonjor le mnde", "French"},          // typo for "bonjour le monde"
+            {"hallo weltz", "German"},             // extra char
+            {"holaa mundo", "Spanish"},            // double 'a'
+            {"cia mond", "Italian"},              // missing 'o'
+
+            // 15. Typo in accented word
+            {"tres contnet", "French"},           // typo in "très content"
+
+            // 16. Garbage with 1 correct word
+            {"flargle hallo blurt", "German"},
     };
 
     cout << "\n--- Running Test Cases ---\n";
@@ -167,14 +202,14 @@ int main() {
     LanguageTrie* italian = new LanguageTrie("Italian");
 
 
-    // Load words from corpus files
+    // Load from corpus files
     loadWordsFromFile("english.txt", english);
     loadWordsFromFile("french.txt", french);
     loadWordsFromFile("german.txt", german);
     loadWordsFromFile("spanish.txt", spanish);
     loadWordsFromFile("italian.txt", italian);
 
-    // Run test cases
+
     runTests(english, french, german, spanish, italian);
 
     string input;

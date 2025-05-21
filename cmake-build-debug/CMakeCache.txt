@@ -251,6 +251,9 @@ LangWitch_IS_TOP_LEVEL:STATIC=ON
 //Value Computed by CMake
 LangWitch_SOURCE_DIR:STATIC=C:/Users/Basmala Kamal/CLionProjects/LangWitch
 
+//No help, variable specified on the command line.
+wxWidgets_CONFIG_EXECUTABLE:UNINITIALIZED=/usr/bin/wx-config
+
 
 ########################
 # INTERNAL cache entries
