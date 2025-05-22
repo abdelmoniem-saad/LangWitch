@@ -6,27 +6,30 @@
 #include "normalize.h"
 #include <vector>
 #include <algorithm>
+#include <climits>
 using namespace std;
+
 int levenshtein(const std::string& s1, const std::string& s2) {
     const size_t len1 = s1.size(), len2 = s2.size();
-    std::vector<std::vector<int>> dp(len1 + 1, std::vector<int>(len2 + 1));
+    vector<int> col(len2 + 1), prevCol(len2 + 1);
 
-    for (size_t i = 0; i <= len1; ++i) dp[i][0] = static_cast<int>(i);
-    for (size_t j = 0; j <= len2; ++j) dp[0][j] = static_cast<int>(j);
+    for (size_t i = 0; i <= len2; i++)
+        prevCol[i] = static_cast<int>(i);
 
-    for (size_t i = 1; i <= len1; ++i) {
-        for (size_t j = 1; j <= len2; ++j) {
-            int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
-            dp[i][j] = std::min({
-                dp[i - 1][j] + 1,
-                dp[i][j - 1] + 1,
-                dp[i - 1][j - 1] + cost
+    for (size_t i = 0; i < len1; i++) {
+        col[0] = static_cast<int>(i + 1);
+        for (size_t j = 0; j < len2; j++) {
+            col[j + 1] = std::min({
+                prevCol[1 + j] + 1,
+                col[j] + 1,
+                prevCol[j] + (s1[i] == s2[j] ? 0 : 1)
             });
         }
+        prevCol.swap(col);
     }
-
-    return dp[len1][len2];
+    return prevCol[len2];
 }
+
 class LanguageTrie {
 private:
     TrieNode* root;
@@ -71,21 +74,28 @@ public:
         }
     }
 
-    bool fuzzySearch(TrieNode* node, const std::string& word, std::string current, int& minDist) const {
-        if (!node || current.size() > word.size() + 2) return false;
+    bool fuzzySearch(TrieNode* node, const std::string& target, std::string current, int& minDist) const {
+        if (!node || current.size() > target.size() + 1) return false;
 
-        int dist = levenshtein(word, current);
-        if (dist <= 1 && node->isEndOfWord) {
-            minDist = std::min(minDist, dist);
-            return true;
+        bool found = false;
+
+        if (node->value != '\0') current += node->value;
+
+        if (node->isEndOfWord) {
+            int dist = levenshtein(target, current);
+            if (dist <= 1) {
+                minDist = std::min(minDist, dist);
+                found = true;
+            }
         }
 
         for (int i = 0; i < CHAR_SIZE; ++i) {
             if (node->children[i]) {
-                fuzzySearch(node->children[i], word, current + node->children[i]->value, minDist);
+                found |= fuzzySearch(node->children[i], target, current, minDist);
             }
         }
-        return false;
+
+        return found;
     }
 
     int getMatchScore(const std::string& word) const {
@@ -114,9 +124,10 @@ public:
         }
         if (normNode && normNode->isNormalizedWord) return 1;
 
-        // Fuzzy match (Levenshtein ≤ 2)
-        int minDist = 3;
-        if (fuzzySearch(root, normalized, "", minDist)) return 1;
+        // Fuzzy match
+        int minDist = INT_MAX;
+        if (fuzzySearch(root, normalized, "", minDist) && minDist <= 1)
+            return 1;
 
         return 0;
     }

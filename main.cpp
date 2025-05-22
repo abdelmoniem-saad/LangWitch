@@ -13,7 +13,6 @@
 #include <fstream>
 using namespace std;
 
-
 void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -23,23 +22,21 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
 
     string word;
     while (getline(file, word)) {
-        trie->insert(word);
+        if (!word.empty() && isalpha(word[0]))  // Skip empty or non-alphabetic lines
+            trie->insert(word);
     }
 
     file.close();
 }
 
-    pair<string, double> detectLanguage(
+pair<string, double> detectLanguage(
     const string& input,
     LanguageTrie* english,
     LanguageTrie* french,
     LanguageTrie* german,
     LanguageTrie* spanish,
     LanguageTrie* italian
-    ) {
-
-
-
+) {
     bool hasAlphabetic = false;
     for (char ch : input) {
         if (isalpha(ch)) {
@@ -48,7 +45,6 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
     if (!hasAlphabetic) {
-
         return {"Unknown", 0.0};
     }
 
@@ -59,30 +55,41 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
     map<string, map<string, set<string>>> contributors;
     vector<string> langs = {"English", "French", "German", "Spanish", "Italian"};
 
+    map<string, double> langTotals;
     while (stream >> word) {
         set<string> detected;
         string normalized = normalizeWord(word);
 
-        int en = english->getMatchScore(normalized);
-        int fr = french->getMatchScore(normalized);
-        int de = german->getMatchScore(normalized);
-        int sp = spanish->getMatchScore(normalized);
-        int it = italian->getMatchScore(normalized);
-        if (en) detected.insert("English");
-        if (fr) detected.insert("French");
-        if (de) detected.insert("German");
-        if (sp) detected.insert("Spanish");
-        if (it) detected.insert("Italian");
+        map<string, int> scores = {
+            {"English", english->getMatchScore(normalized)},
+            {"French", french->getMatchScore(normalized)},
+            {"German", german->getMatchScore(normalized)},
+            {"Spanish", spanish->getMatchScore(normalized)},
+            {"Italian", italian->getMatchScore(normalized)}
+        };
+
+        int maxScore = 0;
+        for (const auto& [lang, score] : scores) {
+            if (score > maxScore) maxScore = score;
+        }
+
+        for (const auto& [lang, score] : scores) {
+            if (score == maxScore && score > 0) {
+                detected.insert(lang);
+            }
+        }
 
         if (!detected.empty()) {
+            double splitScore = static_cast<double>(maxScore) / detected.size();
             for (const auto& lang : detected) {
-                matrix[lang][lang] += 1;
+                matrix[lang][lang] += splitScore;
+                langTotals[lang] += splitScore;
                 contributors[lang][lang].insert(word);
             }
             for (const auto& l1 : detected) {
                 for (const auto& l2 : detected) {
                     if (l1 != l2) {
-                        matrix[l1][l2] += 0.5;
+                        matrix[l1][l2] += splitScore / 2;
                         contributors[l1][l2].insert(word);
                     }
                 }
@@ -90,23 +97,21 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
     }
 
-    string bestLang;
-    int maxDiagonal = -1;
+    string bestLang = "Unknown";
+    double maxLangScore = -1;
     for (const string& lang : langs) {
-        if (matrix[lang][lang] > maxDiagonal) {
-            maxDiagonal = matrix[lang][lang];
+        if (langTotals[lang] > maxLangScore) {
+            maxLangScore = langTotals[lang];
             bestLang = lang;
         }
     }
 
-
-    int total = 0;
-    for (const string& row : langs) {
-        for (const string& col : langs) {
-            if (row == col || row < col) total += matrix[row][col];
-        }
+    double grandTotal = 0.0;
+    for (const string& lang : langs) {
+        grandTotal += langTotals[lang];
     }
-    double confidence = (total > 0) ? static_cast<double>(matrix[bestLang][bestLang]) / total : 0.0;
+    double confidence = (grandTotal > 0) ? langTotals[bestLang] / grandTotal : 0.0;
+
     cout << "\n--- Language Word Match Square Matrix ---\n";
     cout << setw(10) << "";
     for (const auto& col : langs) {
@@ -120,6 +125,7 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
         }
         cout << "\n";
     }
+
     cout << "\n--- Word Contributors per Matrix Cell ---\n";
     for (const auto& row : langs) {
         for (const auto& col : langs) {
@@ -132,9 +138,11 @@ void loadWordsFromFile(const string& filename, LanguageTrie* trie) {
             }
         }
     }
+
     cout << fixed << setprecision(2);
     return {bestLang, confidence};
 }
+
 
 void runTests(LanguageTrie* english, LanguageTrie* french, LanguageTrie* german, LanguageTrie* spanish, LanguageTrie* italian) {
     vector<pair<string, string>> testCases = {
