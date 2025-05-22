@@ -210,7 +210,7 @@ int main() {
     LanguageTrie* italian = new LanguageTrie("Italian");
 
 
-    // Load from corpus files
+    // Load from dictionary files
     loadWordsFromFile("english.txt", english);
     loadWordsFromFile("french.txt", french);
     loadWordsFromFile("german.txt", german);
